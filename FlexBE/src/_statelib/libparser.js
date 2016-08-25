@@ -1,33 +1,26 @@
 LibParser = new (function() {
+	const {dialog} = require('electron').remote
+	const path = require('path')
 	var that = this;
 
 	var lib_folders = [];
 
 	var parseFolder = function(folder, import_path, has_init) {
-		Filesystem.checkFileExists(folder, "__init__.py", function(exists) {
+		Filesystem.checkFileExists(path.join(folder, "__init__.py"), function(exists) {
 			has_init = has_init || exists;
-			Filesystem.getFolderContent(folder, function(entries) {
+			Filesystem.getFolderContent(folder, (err, entries) => {
 				entries.sort().forEach(function(entry, i) {
-					if(entry.isDirectory) {
+					if(Filesystem.isDirectory(entry)) {
 						if (!has_init) {
-							chrome.fileSystem.getDisplayPath(entry, function(path) {
-								parseFolder(entry, path.slice(0, path.lastIndexOf("/") + 1), has_init);
-							});
+							parseFolder(entry, entry.slice(0, entry.lastIndexOf("/") + 1), has_init);
 						} else {
 							parseFolder(entry, import_path, has_init);
 						}
 					} else if (has_init) {
-						chrome.fileSystem.getDisplayPath(entry, function(path) {
-							if (!path.endsWith(".py")) return;
-							entry.file(function(file) {
-								var reader = new FileReader();
-								reader.onload = function(e) {
-									var contents = e.target.result;
-									var imports = path.replace(import_path, "").replace(/.py$/i, "").replace(/[\/]/g, ".");
-									parseState(contents, imports);
-								};
-								reader.readAsText(file);
-							});
+						if (!entry.endsWith(".py")) return;
+						Filesystem.getFileContent(path.join(folder, entry), 'utf-8', (err, content) => {
+							var imports = path.join(folder, entry).replace(import_path, "").replace(/.py$/i, "").replace(/[\/]/g, ".");
+							parseState(content, imports);
 						});
 					}
 				});
@@ -94,7 +87,7 @@ LibParser = new (function() {
 			}
 			if (last_argument != undefined) argument_doc.push(last_argument);
 
-		} 
+		}
 		if (state_desc.match(/^\s*$/)) {
 			state_desc = "[no documentation]";
 		}
@@ -114,7 +107,7 @@ LibParser = new (function() {
 				class_vars.push({name: class_var_match[1], value: class_var_match[2]});
 			}
 		}
-		
+
 
 		var param_results = content.match(param_pattern);
 		var state_params = [];
@@ -196,7 +189,7 @@ LibParser = new (function() {
 		});
 
 		Statelib.addDependency(import_path);
-		
+
 		Statelib.addToLib(new StateDefinition(
 			state_class,
 			state_doc,
@@ -223,31 +216,26 @@ LibParser = new (function() {
 	this.parseLibFolders = function() {
 		Statelib.resetLib();
 		T.logInfo("Parsing available states...");
-		for(var i=0; i<lib_folders.length; ++i) {
-			chrome.fileSystem.restoreEntry(lib_folders[i], function(entry) {
-				if (chrome.runtime.lastError) {
-					that.removeLibFolder(lib_folders[i]);
-					return;
-				}
-				chrome.fileSystem.getDisplayPath(entry, function(path) {
-					parseFolder(entry, path.slice(0, path.lastIndexOf("/") + 1), false);
-				});
-			});
+		for (var i = 0; i < lib_folders.length; i++) {
+			entry = lib_folders[i];
+			parseFolder(entry, entry.slice(0, entry.lastIndexOf("/") + 1), false);
 		}
 	}
 
 	this.addLibFolder = function(display_callback) {
-		chrome.fileSystem.chooseEntry({type: 'openDirectory'}, function(entry) {
-			var folder_id = chrome.fileSystem.retainEntry(entry);
-			lib_folders.push(folder_id);
-			display_callback(folder_id);
-			chrome.storage.local.set({libFolders: lib_folders}, function() { console.log("Folder list saved."); });
-		});
+		dialog.showOpenDialog({properties: ['openDirectory']}, function (folder_paths) {
+			folder_paths.forEach(function (folder) {
+				console.log(`Adding state lib folder '${folder}'`);
+				lib_folders.push(folder);
+				display_callback(folder);
+			});
+			localStorage.setItem('libFolders', JSON.stringify(lib_folders));
+	  });
 	}
 
 	this.removeLibFolder = function(folder_id) {
 		lib_folders.remove(folder_id);
-		chrome.storage.local.set({libFolders: lib_folders}, function() { console.log("Folder list saved."); });
+		localStorage.setItem('libFolders', JSON.stringify(lib_folders));
 	}
 
 	var helper_splitOnTopCommas = function(code) {

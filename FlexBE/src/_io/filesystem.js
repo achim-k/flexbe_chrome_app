@@ -1,101 +1,58 @@
 Filesystem = new (function() {
-	var that = this;
+	const fs = require('fs');
+	const path = require('path');
 
-	var toArray = function (list) {
-		return Array.prototype.slice.call(list || [], 0);
+	this.createFile = fs.writeFile;			// fs.writeFile(file, data[, options], callback)							(err) => {}
+	this.getFileContent = fs.readFile		// fs.readFile(file[, options], callback)  										(err, data) => {}
+	this.getFolderContent = fs.readdir	// fs.readdir(path[, options], callback)											(err, files) => {}
+
+	this.getFileName = (filename, extension) => {
+		if(extension)
+		return path.parse(filename).base
+		return path.parse(filename).name
 	}
 
-
-	this.getFileName = function(path, extension) {
-		var name_with_extension = path.slice(path.lastIndexOf("/") + 1);
-
-		if (extension)
-			return name_with_extension;
-
-		return name_with_extension.slice(0, name_with_extension.lastIndexOf("."));
-	}
-
-	this.createFolder = function(fe, name, callback) {
-		fe.getDirectory(name,
-			{ create: true },
-			callback, 
-			function(error) { T.logError("could not create folder " + name + ", " + error);
-		});
-	}
-
-	this.createFile = function(fe, name, content, callback) {
-		fe.getFile(name,
-			{ create: true },
-			function(file_entry) {
-				file_entry.createWriter(function(writer) {
-					writer.onerror = function(error) { T.logError("error when writing file " + name + ", " + error); };
-					writer.onwriteend = callback;
-					writer.write(new Blob([content], {type: 'text/plain'}));
-				}, function(e) { T.logError("error when accessing file " + name + ", " + error); });
-			},
-			function(error) { T.logError("could not create file " + name + ", " + error); }
-		);
-	}
-
-	this.readFile = function(fe, callback) {
-		fe.file(function(file) {
-			var reader = new FileReader();
-			reader.onload = function(e) {
-				callback(e.target.result);
-			};
-			reader.readAsText(file);
-		});
-	}
-
-	this.checkFolderExists = function(fe, name, callback) {
-		that.getFolderContent(fe, function(entries) {
-			var folder = entries.findElement(function(element) {
-				return element.isDirectory && element.name == name;
-			});
-			callback(folder != undefined);
-		});
-	}
-
-	this.checkFileExists = function(fe, name, callback) {
-		that.getFolderContent(fe, function(entries) {
-			var folder = entries.findElement(function(element) {
-				return element.isFile && element.name == name;
-			});
-			callback(folder != undefined);
-		});
-	}
-
-	this.getFileContent = function(fe, name, callback) {
-		that.getFolderContent(fe, function(entries) {
-			var file_entry = entries.findElement(function(element) {
-				return element.isFile && element.name == name;
-			});
-			if (file_entry == undefined) {
-				T.logError("file " + name + " not found in the specified folder");
-				return;
+	// from http://lmws.net/making-directory-along-with-missing-parents-in-node-js
+	this.createFolder = (folder, callback) => {
+		//Call the standard fs.mkdir
+		fs.mkdir(folder, (err) => {
+			//When it fail in this way, do the custom steps
+			if (err && err.code === 'ENOENT') {
+				//Create all the parents recursively
+				this.createFolder(path.dirname(folder, callback));
+				//And then the directory
+				this.createFolder(folder, callback);
+				return
 			}
-
-			that.readFile(file_entry, callback);
+			//Manually run the callback since we used our own callback to do all these
+			callback && callback(error);
 		});
+	};
+
+	this.checkFolderExists = (path, callback) => {
+		fs.stat(path, (err, stats) => {
+			if(err)
+				callback(false)
+			else
+				callback(stats.isDirectory())
+		})
 	}
 
-	this.getFolderContent = function(fe, callback) {
-		var dirReader = fe.createReader();
-		var entries = [];
-		
-		var readEntries = function() {
-			dirReader.readEntries (function(results) {
-				if (results.length == 0) {
-					callback(entries);
-				} else {
-					entries = entries.concat(toArray(results));
-					readEntries();
-				}
-			}, function(error) { T.logError("error while reading folder list, " + error); });
-		};
-		readEntries();
+	this.checkFileExists = (path, callback) => {
+		fs.stat(path, (err, stats) => {
+			if(err)
+				callback(false)
+			else
+				callback(stats.isFile())
+		})
 	}
 
-
+	this.isDirectory = (path) => {
+		try {
+			return fs.statSync(path).isDirectory();
+		} catch (e) {
+			return false
+		}
+	}
 
 }) ();

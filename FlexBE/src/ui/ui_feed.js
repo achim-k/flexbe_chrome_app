@@ -1,4 +1,5 @@
 UI.Feed = new (function() {
+	const {app} = require('electron').remote
 	var that = this;
 
 	var requestLatestVersion = function(callback) {
@@ -26,7 +27,7 @@ UI.Feed = new (function() {
 	}
 
 	var displayVersionIndicator = function(latest_version_label) {
-		var current_version_label = chrome.runtime.getManifest().version;
+		var current_version_label = app.getVersion();
 		var status_element = document.getElementById("flexbe_version_status");
 
 		if (latest_version_label == undefined) {
@@ -52,7 +53,7 @@ UI.Feed = new (function() {
 			status_element.setAttribute("src", "img/version_devel.png");
 			status_element.setAttribute("title", "Pre-release development version");
 			console.log("Version: " + current_version_label + " (devel), Release: " + latest_version_label);
-		
+
 		} else {
 			status_element.setAttribute("src", "img/version_latest.png");
 			status_element.setAttribute("title", "Running latest release");
@@ -132,7 +133,7 @@ UI.Feed = new (function() {
 	}
 
 	this.initialize = function() {
-		document.getElementById("flexbe_version_label").innerText = chrome.runtime.getManifest().version;
+		document.getElementById("flexbe_version_label").innerText = app.getVersion();
 
 		requestLatestVersion(
 			displayVersionIndicator

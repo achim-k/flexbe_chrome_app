@@ -149,7 +149,7 @@ Drawable.Statemachine = function(state_obj, target_paper, readonly, mode, active
 		.dblclick(Drawable.Helper.enterStatemachine);
 
 	if (!readonly) {
-		drag_box = paper.image('../img/move-icon.png', width-19, 4, 15, 15)
+		drag_box = paper.image('img/move-icon.png', width-19, 4, 15, 15)
 			.attr({cursor: 'move', 'stroke-width': 1})
 			.data("state", state_obj)
 			.data("box", state_outer_box)

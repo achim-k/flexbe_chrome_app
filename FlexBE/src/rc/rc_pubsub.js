@@ -1,4 +1,5 @@
 RC.PubSub = new (function() {
+	const {app} = require('electron').remote
 	var that = this;
 
 	var ros;
@@ -76,7 +77,7 @@ RC.PubSub = new (function() {
 			T.logInfo("Please press 'Stop Execution' next time before closing this window when running a behavior.");
 		}
 
-		if (RC.Controller.isLocked() && msg.code == STARTED && msg.args.length > 0 
+		if (RC.Controller.isLocked() && msg.code == STARTED && msg.args.length > 0
 			&& RC.Controller.isCurrentState(Behavior.getStatemachine().getStateByPath(msg.args[0]), false)) {
 
 			RC.Sync.remove("Switch");
@@ -248,7 +249,7 @@ RC.PubSub = new (function() {
 		var root_split = root.split("/");
 		var root_name = root_split[root_split.length - 1];
 		var root_container_path = root.replace("/" + root_name, "");
-		var root_container = (root_container_path == "")? Behavior.getStatemachine() : 
+		var root_container = (root_container_path == "")? Behavior.getStatemachine() :
 								Behavior.getStatemachine().getStateByPath(root_container_path);
 		var root_varname = "";
 		var defs = ModelGenerator.parseInstantiationMsg(result.states);
@@ -308,49 +309,49 @@ RC.PubSub = new (function() {
 
 		// Subscriber
 
-		current_state_listener = new ROSLIB.Topic({ 
+		current_state_listener = new ROSLIB.Topic({
 			ros : ros,
 			name : ns + 'flexbe/behavior_update',
 			messageType : 'std_msgs/String'
 		});
 		current_state_listener.subscribe(current_state_callback);
 
-		outcome_request_listener = new ROSLIB.Topic({ 
+		outcome_request_listener = new ROSLIB.Topic({
 			ros : ros,
 			name : ns + 'flexbe/outcome_request',
 			messageType : 'flexbe_msgs/OutcomeRequest'
 		});
 		outcome_request_listener.subscribe(outcome_request_callback);
 
-		behavior_feedback_listener = new ROSLIB.Topic({ 
+		behavior_feedback_listener = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/log',
 			messageType: 'flexbe_msgs/BehaviorLog',
 		});
 		behavior_feedback_listener.subscribe(behavior_feedback_callback);
 
-		behavior_status_listener = new ROSLIB.Topic({ 
+		behavior_status_listener = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/status',
 			messageType: 'flexbe_msgs/BEStatus',
 		});
 		behavior_status_listener.subscribe(behavior_status_callback);
 
-		command_feedback_listener = new ROSLIB.Topic({ 
+		command_feedback_listener = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/command_feedback',
 			messageType: 'flexbe_msgs/CommandFeedback',
 		});
 		command_feedback_listener.subscribe(command_feedback_callback);
 
-		onboard_heartbeat_listener = new ROSLIB.Topic({ 
+		onboard_heartbeat_listener = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/heartbeat',
 			messageType: 'std_msgs/Empty',
 		});
 		onboard_heartbeat_listener.subscribe(onboard_heartbeat_callback);
 
-		ros_command_listener = new ROSLIB.Topic({ 
+		ros_command_listener = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/uicommand',
 			messageType: 'flexbe_msgs/UICommand',
@@ -360,75 +361,75 @@ RC.PubSub = new (function() {
 
 		// Publisher
 
-		behavior_start_publisher = new ROSLIB.Topic({ 
+		behavior_start_publisher = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/request_behavior',
 			messageType: 'flexbe_msgs/BehaviorRequest'
 		});
 
-		transition_command_publisher = new ROSLIB.Topic({ 
+		transition_command_publisher = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/command/transition',
 			messageType: 'flexbe_msgs/OutcomeRequest'
 		});
 
-		autonomy_level_publisher = new ROSLIB.Topic({ 
+		autonomy_level_publisher = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/command/autonomy',
 			messageType: 'std_msgs/UInt8'
 		});
 
-		preempt_behavior_publisher = new ROSLIB.Topic({ 
+		preempt_behavior_publisher = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/command/preempt',
 			messageType: 'std_msgs/Empty'
 		});
 
-		lock_behavior_publisher = new ROSLIB.Topic({ 
+		lock_behavior_publisher = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/command/lock',
 			messageType: 'std_msgs/String'
 		});
 
-		unlock_behavior_publisher = new ROSLIB.Topic({ 
+		unlock_behavior_publisher = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/command/unlock',
 			messageType: 'std_msgs/String'
 		});
 
-		sync_mirror_publisher = new ROSLIB.Topic({ 
+		sync_mirror_publisher = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/command/sync',
 			messageType: 'std_msgs/Empty'
 		});
 
-		attach_behavior_publisher = new ROSLIB.Topic({ 
+		attach_behavior_publisher = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/command/attach',
 			messageType: 'std_msgs/UInt8'
 		});
 
-		repeat_behavior_publisher = new ROSLIB.Topic({ 
+		repeat_behavior_publisher = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/command/repeat',
 			messageType: 'std_msgs/Empty'
 		});
 
-		pause_behavior_publisher = new ROSLIB.Topic({ 
+		pause_behavior_publisher = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/command/pause',
 			messageType: 'std_msgs/Bool'
 		});
 
-		version_publisher = new ROSLIB.Topic({ 
+		version_publisher = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/ui_version',
 			messageType: 'std_msgs/String',
 			latch: 'True'
 		});
-		version_publisher.publish({data: '' + chrome.runtime.getManifest().version});
+		version_publisher.publish({data: '' + app.getVersion()});
 
-		ros_notification_publisher = new ROSLIB.Topic({ 
+		ros_notification_publisher = new ROSLIB.Topic({
 			ros: ros,
 			name: ns + 'flexbe/uinotification',
 			messageType: 'std_msgs/String'
@@ -471,7 +472,11 @@ RC.PubSub = new (function() {
 	this.sendBehaviorStart = function(param_keys, param_vals, autonomy) {
 		if (ros == undefined) { T.debugWarn("ROS not initialized!"); return; }
 		var names = Behavior.createNames();
-		BehaviorPacker.loadBehaviorCode(function(code) {
+		BehaviorPacker.loadBehaviorCode((err, code) => {
+			if(err) {
+				T.logError(err)
+				return
+			}
 			RC.Controller.signalStarted();
 			RC.Sync.register("BehaviorStart", 60);
 
@@ -491,7 +496,11 @@ RC.PubSub = new (function() {
 		if (ros == undefined) { T.debugWarn("ROS not initialized!"); return; }
 		var names = Behavior.createNames();
 		RC.Sync.register("Switch", 70);
-		BehaviorPacker.loadBehaviorCode(function(code) {
+		BehaviorPacker.loadBehaviorCode((err, code) => {
+			if(err) {
+				T.logError(err)
+				return
+			}
 			//RC.Controller.signalStarted(); // would it work?
 
 			// request start
@@ -614,7 +623,7 @@ RC.PubSub = new (function() {
 
 	this.sendRosNotification = function(cmd) {
 		if (ros == undefined) { T.debugWarn("ROS not initialized!"); return; }
-		
+
 		ros_notification_publisher.publish({
 			data: cmd
 		});

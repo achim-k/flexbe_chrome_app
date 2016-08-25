@@ -1,27 +1,13 @@
 BehaviorPacker = new (function() {
+	const path = require('path')
 	var that = this;
 
 	this.loadBehaviorCode = function(callback) {
 		var names = Behavior.createNames();
+		var src_dir = path.join(UI.Settings.getBehaviorsFolderID(), names.rosnode_name, 'src')
+		var filename = path.join(src_dir, names.rosnode_name, names.file_name)
 
-		chrome.fileSystem.restoreEntry(UI.Settings.getBehaviorsFolderID(), function(entry) {
-			entry.getDirectory(names.rosnode_name, { create: false },
-				function(dir) {
-					dir.getDirectory("src", { create: false },
-						function(src_dir) {
-							src_dir.getDirectory(names.rosnode_name, { create: false },
-								function(innerDir) {
-									Filesystem.getFileContent(innerDir, names.file_name, callback);
-								}, 
-								function(error) { handleError("could not access folder " + names.rosnode_name + ", " + error); }
-							);
-						}, 
-						function(error) { handleError("could not access folder src, " + error); }
-					);
-				}, 
-				function(error) { handleError("could not access folder " + names.rosnode_name + ", " + error); }
-			);
-		});
+		Filesystem.getFileContent(filename, 'utf-8', callback)
 	}
 
 }) ();

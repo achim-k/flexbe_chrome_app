@@ -1,4 +1,5 @@
 BehaviorSaver = new (function() {
+	const path = require('path')
 	var that = this;
 
 	var names;
@@ -6,106 +7,124 @@ BehaviorSaver = new (function() {
 	var completed_counter = 0;
 
 	var storeBehaviorCode = function(generated_code) {
-		var create_callback = function(folder) {
-			var truncated = false;
-			Filesystem.createFile(folder, names.file_name, generated_code, function() { 
-				if (!truncated) {
-					truncated = true;
-					this.truncate(this.position); // will trigger another onwriteend
-				} else {
+
+		var writeFile = (filename, content) => {
+			Filesystem.createFile(filename, content, (err) => {
+				if(!err) {
 					saveSuccessCallback();
-				}
-			});
-		};
-		chrome.fileSystem.restoreEntry(UI.Settings.getBehaviorsFolderID(), function(entry) {
-			Filesystem.checkFolderExists(entry, names.rosnode_name, function(exists) {
-				if (exists) {
-					entry.getDirectory(names.rosnode_name, { create: true },
-						function(dir) {
-							dir.getDirectory("src", { create: true },
-								function(src_dir) {
-									src_dir.getDirectory(names.rosnode_name, { create: true },
-										function(folder) {
-											if (RC.Controller.isConnected()) {
-												Filesystem.checkFileExists(folder, names.file_name_tmp, function(exists) {
-													if (!exists) {
-														Filesystem.getFileContent(folder, names.file_name, function(content_onboard) {
-															Filesystem.createFile(folder, names.file_name_tmp, content_onboard, function() { 
-																create_callback(folder);
-															});
-														});
-													} else {
-														create_callback(folder);
-													}
-												});
-											} else {
-												create_callback(folder);
-											}
-										}, 
-										function(error) { handleError("could not access folder " + names.rosnode_name + ", " + error); }
-									);
-								}, 
-								function(error) { handleError("could not access folder src, " + error); }
-							);
-						}, 
-						function(error) { handleError("could not access folder " + names.rosnode_name + ", " + error); }
-					);
 				} else {
-					createBehaviorFolder(entry, create_callback);
+					T.logError(err);
 				}
 			});
-		});
+		}
+
+		var create_callback = function(folder) {
+			if(!Filesystem.isDirectory(folder)) {
+				Filesystem.createFolder(folder, (err) => {
+					if(!err) {
+						writeFile(path.join(folder, names.file_name), generated_code);
+					} else {
+						T.logError(err);
+					}
+				});
+			} else {
+				writeFile(path.join(folder, names.file_name), generated_code);
+			}
+		};
+
+		folder = path.join(UI.Settings.getBehaviorsFolderID(), names.rosnode_name, 'src', names.rosnode_name);
+		if (RC.Controller.isConnected()) {
+			Filesystem.checkFileExists(path.join(folder, names.file_name_tmp), function(exists) {
+				if (!exists) {
+					Filesystem.getFileContent(path.join(folder, names.file_name), 'utf-8', (err, content_onboard) => {
+						if(err) {
+							T.logError(err)
+							return
+						}
+						Filesystem.createFile(path.join(folder, names.file_name_tmp), content_onboard, (err) => {
+							if(err) {
+								T.logError(err)
+								return
+							}
+							create_callback(folder);
+						});
+					});
+				} else {
+					create_callback(folder);
+				}
+			});
+		} else {
+			create_callback(folder);
+		}
 	}
 
 	var createBehaviorFolder = function(wfe, create_cb) {
-		Filesystem.createFolder(wfe, names.rosnode_name, function(dir) {
-			Filesystem.createFolder(dir, "src", function(src_dir) {
-				Filesystem.createFolder(src_dir, names.rosnode_name, function(code_dir) {
-					Filesystem.createFile(code_dir, "__init__.py", "", function() {});
-					create_cb(code_dir);
-				});
-			});
+		dir = path.join(wfe, names.rosnode_name);
+		code_dir = path.join(dir, 'src', names.rosnode_name);
 
-			Filesystem.createFile(dir, "package.xml", PackageGenerator.generatePackageXML(), function() { T.logInfo("Created package.xml"); });
-			Filesystem.createFile(dir, "CMakeLists.txt", PackageGenerator.generateCMake(), function() { T.logInfo("Created CMakeLists.txt"); });
-			Filesystem.createFile(dir, "setup.py", PackageGenerator.generateSetupPy(), function() { T.logInfo("Created setup.py"); });
+		Filesystem.createFile(path.join(code_dir, "__init__.py"), "", (err) => {
+			if(err) {
+				T.logError(err)
+				return
+			}
+			create_cb(code_dir);
 		});
-	}
+
+		Filesystem.createFile(path.join(dir, "package.xml"), PackageGenerator.generatePackageXML(), (err) => {
+			if(err) {
+				T.logError(err)
+				return
+			}
+			T.logInfo("Created package.xml");
+		});
+		Filesystem.createFile(path.join(dir, "CMakeLists.txt"), PackageGenerator.generateCMake(), (err) => {
+			if(err) {
+				T.logError(err)
+				return
+			}
+			T.logInfo("Created CMakeLists.txt");
+		});
+		Filesystem.createFile(path.join(dir, "setup.py"), PackageGenerator.generateSetupPy(), (err) => {
+			if(err) {
+				T.logError(err)
+				return
+			}
+			T.logInfo("Created setup.py");
+		});
+	};
 
 	var storeBehaviorManifest = function(generated_manifest) {
-		chrome.fileSystem.restoreEntry(UI.Settings.getBEFolderID(), function(entry) {
-			entry.getDirectory("behaviors", { create: true },
-				function(dir) {
-					var truncated = false;
-					Filesystem.createFile(dir, names.rosnode_name + ".xml", generated_manifest, function() { 
-						if (!truncated) {
-							truncated = true;
-							this.truncate(this.position); // will trigger another onwriteend
-						} else {
-							saveSuccessCallback();
-						}
-					});
-				},
-				function(error) { handleError("could not access folder behaviors, " + error); }
-			);
+		dir = path.join(UI.Settings.getBEFolderID(), 'behaviors');
+		Filesystem.createFile(path.join(dir, names.rosnode_name + ".xml"), generated_manifest, (err) => {
+			if(err) {
+				handleError(err);
+			} else {
+				saveSuccessCallback();
+			}
 		});
 	}
 
 	var addBehaviorDependency = function() {
-		chrome.fileSystem.restoreEntry(UI.Settings.getBEFolderID(), function(entry) {
-			Filesystem.getFileContent(entry, "package.xml", function(content) {
-				if (content.indexOf("<run_depend>" + names.rosnode_name + "</run_depend>") > 0) {
-					T.logInfo("flexbe_behaviors already has dependency");
-					saveSuccessCallback();
-					return;
+		Filesystem.getFileContent(path.join(UI.Settings.getBEFolderID(), "package.xml"), 'utf-8', (err, content) => {
+			if(err) {
+				T.logError(err)
+				return
+			}
+			if (content.indexOf("<run_depend>" + names.rosnode_name + "</run_depend>") > 0) {
+				T.logInfo("flexbe_behaviors already has dependency");
+				saveSuccessCallback();
+				return;
+			}
+			content_split = content.split('</run_depend>');
+			content_split[content_split.length - 1] = "\n  <run_depend>" + names.rosnode_name + "</run_depend>" + content_split[content_split.length - 1];
+			content = content_split.join('</run_depend>');
+			Filesystem.createFile(path.join(entry, "package.xml"), content, (err) => {
+				if(err) {
+					T.logError(err)
+					return
 				}
-				content_split = content.split('</run_depend>');
-				content_split[content_split.length - 1] = "\n  <run_depend>" + names.rosnode_name + "</run_depend>" + content_split[content_split.length - 1];
-				content = content_split.join('</run_depend>');
-				Filesystem.createFile(entry, "package.xml", content, function() {
-					T.logInfo("Added dependency to flexbe_behaviors");
-					saveSuccessCallback();
-				});
+				T.logInfo("Added dependency to flexbe_behaviors");
+				saveSuccessCallback();
 			});
 		});
 	}
@@ -162,44 +181,25 @@ BehaviorSaver = new (function() {
 		}
 
 		names = Behavior.createNames();
-		chrome.fileSystem.restoreEntry(UI.Settings.getBehaviorsFolderID(), function(entry) {
-			Filesystem.checkFolderExists(entry, names.rosnode_name, function(exists) {
-				if (exists) {
-					entry.getDirectory(names.rosnode_name, { create: true },
-						function(dir) {
-							dir.getDirectory("src", { create: true },
-								function(src_dir) {
-									src_dir.getDirectory(names.rosnode_name, { create: true },
-										function(folder) {
-											Filesystem.checkFileExists(folder, names.file_name, function(exists) {
-												if (exists) {
-													Filesystem.getFileContent(folder, names.file_name, function(content) {
-														var extract_result = CodeParser.extractManual(content);
-														Behavior.setManualCodeImport(extract_result.manual_import);
-														Behavior.setManualCodeInit(extract_result.manual_init);
-														Behavior.setManualCodeCreate(extract_result.manual_create);
-														Behavior.setManualCodeFunc(extract_result.manual_func);
-														perform_save();
-													});
-												} else {
-													perform_save();
-												}
-											});
-										}, 
-										function(error) { handleError("could not access folder " + names.rosnode_name + ", " + error); }
-									);
-								}, 
-								function(error) { handleError("could not access folder src, " + error); }
-							);
-						}, 
-						function(error) { handleError("could not access folder " + names.rosnode_name + ", " + error); }
-					);
-				} else {
+		folder = path.join(UI.Settings.getBehaviorsFolderID(), names.rosnode_name, 'src', names.rosnode_name)
+		Filesystem.checkFileExists(path.join(folder, names.file_name), function(exists) {
+			if (exists) {
+				Filesystem.getFileContent(path.join(folder, names.file_name), 'utf-8', (err, content) => {
+					if(err) {
+						T.logError(err)
+						return
+					}
+					var extract_result = CodeParser.extractManual(content);
+					Behavior.setManualCodeImport(extract_result.manual_import);
+					Behavior.setManualCodeInit(extract_result.manual_init);
+					Behavior.setManualCodeCreate(extract_result.manual_create);
+					Behavior.setManualCodeFunc(extract_result.manual_func);
 					perform_save();
-				}
-			});
+				});
+			} else {
+				perform_save();
+			}
 		});
-		
 	}
 
 }) ();

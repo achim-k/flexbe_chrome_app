@@ -126,7 +126,7 @@ Drawable.State = function(state_obj, target_paper, readonly, mode, active, locke
 		.click(Drawable.Helper.viewStateProperties);
 
 	if (!readonly) {
-		drag_box = paper.image('../img/move-icon.png', width-16, 1, 15, 15)
+		drag_box = paper.image('img/move-icon.png', width-16, 1, 15, 15)
 			.attr({cursor: 'move', 'stroke-width': 1})
 			.data("state", state_obj)
 			.data("box", state_box)

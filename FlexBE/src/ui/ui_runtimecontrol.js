@@ -1,4 +1,5 @@
 UI.RuntimeControl = new (function() {
+	const {dialog} = require('electron').remote
 	var that = this;
 
 	var R = undefined;
@@ -95,7 +96,7 @@ UI.RuntimeControl = new (function() {
 			transition.drawing
 				.attr({'cursor': 'pointer', 'title': "Click to force outcome " + element.getOutcome()})
 				.data("transition", transition.obj)
-				.click(function() { 
+				.click(function() {
 					if (RC.Sync.hasProcess("Transition")) return;
 					var t = this.data("transition");
 					RC.PubSub.sendOutcomeRequest(t.getFrom(), t.getOutcome());
@@ -316,8 +317,16 @@ UI.RuntimeControl = new (function() {
 				add_button.setAttribute("value", "...");
 				add_button.addEventListener('click', function() {
 					var button = this;
-					chrome.fileSystem.chooseEntry({type: 'openFile'}, function(entry) {
-						button.parentNode.parentNode.children[0].children[0].setAttribute("value", entry.name);
+					var dialog_options = {
+						properties: ['openFile', 'createDirectory'],
+						filters: [
+							{name: 'Configuration (.json)', extensions: ['json']}
+						]
+					};
+					dialog.showOpenDialog({properties: ['openFile', 'createDirectory']}, (file_paths) => {
+						if (file_paths == undefined) return;
+						filename = file_paths[0];
+						button.parentNode.parentNode.children[0].children[0].setAttribute("value", filename);
 					});
 				});
 
@@ -495,7 +504,7 @@ UI.RuntimeControl = new (function() {
 			});
 			var selection_box = document.getElementById("selection_rc_autonomy");
 			var autonomy_value = parseInt(selection_box.options[selection_box.selectedIndex].value);
-			RC.PubSub.sendBehaviorStart(param_keys, param_vals, autonomy_value); 
+			RC.PubSub.sendBehaviorStart(param_keys, param_vals, autonomy_value);
 		});
 	}
 
@@ -630,7 +639,7 @@ UI.RuntimeControl = new (function() {
 						var remove = function(el, timeout) {
 							setTimeout(function() {
 								document.getElementById("sync_extension").removeChild(el);
-								document.getElementById("sync_extension").style.height = 
+								document.getElementById("sync_extension").style.height =
 									Math.max(20, 20 * document.getElementById("sync_extension").childNodes.length) + "px";
 							}, timeout);
 						}
@@ -823,7 +832,7 @@ UI.RuntimeControl = new (function() {
 		current_states = current_states.slice(0, path_segments.length);
 
 		// don't update display if it's only a child update
-		if (current_state != undefined && current_level < path_segments.length 
+		if (current_state != undefined && current_level < path_segments.length
 			&& current_states[current_level].getStatePath() == current_state.getStatePath()) {
 
 			if (!RC.Controller.isLocked()) {
@@ -837,7 +846,7 @@ UI.RuntimeControl = new (function() {
 		if (!RC.Controller.isLocked()) {
 			that.displayLockBehavior();
 		}
-		
+
 		if (status_label != undefined) {
 			status_label.remove();
 			status_label = undefined;
@@ -867,7 +876,7 @@ UI.RuntimeControl = new (function() {
 				collapse = false;
 				break;
 		}
-		var currentdate = new Date(); 
+		var currentdate = new Date();
 		var time = currentdate.toLocaleTimeString();
 
 		var text_split = text.split("\n");

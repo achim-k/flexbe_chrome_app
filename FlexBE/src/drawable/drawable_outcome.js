@@ -24,7 +24,7 @@ Drawable.Outcome = function(outcome_obj, target_paper, readonly, outline) {
 	dot.push(paper.text(8, 25, outcome_obj.getStateName().split('#')[0]).attr({fill: color}));
 
 	if (!readonly) {
-		var drag_box = paper.image('../img/move-icon.png', 20, 0, 15, 15)
+		var drag_box = paper.image('img/move-icon.png', 20, 0, 15, 15)
 			.attr({cursor: 'move', 'stroke-width': 1})
 			.data("state", outcome_obj)
 			.data("box", dot_box)

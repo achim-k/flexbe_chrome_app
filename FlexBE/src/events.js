@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
         n = this.getAttribute("cmd");
         evt.dataTransfer.setData('text/plain', n);//'rosed ' + n.rosnode_name + ' ' + n.file_name+ '\n');
     });
-    
+
     document.getElementById('button_db_variable_add').addEventListener('click', UI.Dashboard.addPrivateVariableClicked);
     document.getElementById('input_db_variable_key_add').addEventListener('keyup', onEnter(UI.Dashboard.addPrivateVariableClicked));
     document.getElementById('input_db_variable_value_add').addEventListener('keyup', onEnterFocusChange(UI.Dashboard.addPrivateVariableClicked, 'input_db_variable_key_add'));
@@ -116,12 +116,12 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('button_add_state_folder').addEventListener('click', UI.Settings.addStateFolderClicked);
     document.getElementById('button_apply_state_library').addEventListener('click', UI.Settings.applyStateLibraryClicked);
 
-    document.getElementById('button_behaviors_chooser').addEventListener('click', UI.Settings.behaviorsChooserClicked);  
+    document.getElementById('button_behaviors_chooser').addEventListener('click', UI.Settings.behaviorsChooserClicked);
     document.getElementById('button_be_chooser').addEventListener('click', UI.Settings.beChooserClicked);
 
     document.getElementById('input_rosbridge_ip').addEventListener('blur', UI.Settings.rosbridgeIPChanged);
     document.getElementById('input_rosbridge_port').addEventListener('blur', UI.Settings.rosbridgePortChanged);
-    document.getElementById('button_rosbridge_connect').addEventListener('click', UI.Settings.connectRosbridgeClicked);  
+    document.getElementById('button_rosbridge_connect').addEventListener('click', UI.Settings.connectRosbridgeClicked);
     document.getElementById('button_rosbridge_disconnect').addEventListener('click', UI.Settings.disconnectRosbridgeClicked);
 
     document.getElementById('input_runtime_timeout').addEventListener('blur', UI.Settings.runtimeTimeoutChanged);
@@ -178,11 +178,11 @@ Mousetrap.bind("esc", function() {
 });
 
 
-chrome.commands.onCommand.addListener(function(command) {
-    switch(command) {
-        case 'Copy': Tools.copy(); break;
-        case 'Paste': Tools.paste(); break;
-//        case 'Undo': ActivityTracer.undo(); break;
-//        case 'Redo': ActivityTracer.redo(); break;
-    }
-});
+// chrome.commands.onCommand.addListener(function(command) {
+//     switch(command) {
+//         case 'Copy': Tools.copy(); break;
+//         case 'Paste': Tools.paste(); break;
+// //        case 'Undo': ActivityTracer.undo(); break;
+// //        case 'Redo': ActivityTracer.redo(); break;
+//     }
+// });

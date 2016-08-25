@@ -1,4 +1,5 @@
 BehaviorLoader = new (function() {
+	const path = require('path');
 	var that = this;
 
 	var parseCode = function(file_content, manifest_data) {
@@ -29,7 +30,7 @@ BehaviorLoader = new (function() {
 		Behavior.setStatemachine(sm);
 		UI.Statemachine.resetStatemachine();
 		T.logInfo("Behavior state machine built.");
-		
+
 		ActivityTracer.resetActivities();
 	}
 
@@ -43,35 +44,6 @@ BehaviorLoader = new (function() {
 		UI.Panels.setActivePanel(UI.Panels.NO_PANEL);
 	}
 
-
-	this.importBehavior = function() {
-		T.clearLog();
-		UI.Panels.Terminal.show();
-
-		// store in file
-		chrome.fileSystem.chooseEntry({type: 'openFile'}, function(fileEntry) {
-			if (fileEntry == undefined) {
-				T.logTnfo("Load cancelled by user.");
-				UI.Panels.Terminal.hide();
-				return;
-			}
-
-			resetEditor();
-
-			fileEntry.file(function(file) {
-				var reader = new FileReader();
-				reader.onload = function(e) {
-					var file_content = e.target.result;
-					T.logInfo("Parsing sourcecode...");
-					parseCode(file_content);
-				};
-				reader.readAsText(file);
-			});
-		});
-
-		T.logInfo("Waiting for a file to load...");
-	}
-
 	this.loadBehavior = function(manifest) {
 		T.clearLog();
 		UI.Panels.Terminal.show();
@@ -83,32 +55,15 @@ BehaviorLoader = new (function() {
 			return;
 		}
 
-		chrome.fileSystem.restoreEntry(UI.Settings.getBehaviorsFolderID(), function(entry) {
-			Filesystem.checkFolderExists(entry, manifest.rosnode_name, function(exists) {
-				if (exists) {
-					entry.getDirectory(manifest.rosnode_name, { create: true },
-						function(dir) {
-							dir.getDirectory("src", { create: true },
-								function(src_dir) {
-									src_dir.getDirectory(manifest.rosnode_name, { create: true },
-										function (folder) {
-											Filesystem.getFileContent(folder, manifest.codefile_name, function(content) {
-												T.logInfo("Parsing sourcecode...");
-												parseCode(content, manifest);
-											});
-										}, 
-										function(error) { T.logError("could not access folder " + manifest.rosnode_name + ", " + error); }
-									);
-								}, 
-								function(error) { T.logError("could not access folder src, " + error); }
-							);
-						}, 
-						function(error) { T.logError("could not access folder " + manifest.rosnode_name + ", " + error); }
-					);
-				} else {
-					T.logError("Behavior package not found in current workspace");
-				}
-			});
+		var behaviors_folder_path = UI.Settings.getBehaviorsFolderID();
+		folder = path.join(behaviors_folder_path, manifest.rosnode_name, 'src', manifest.rosnode_name);
+		Filesystem.getFileContent(path.join(folder, manifest.codefile_name), 'utf-8', (err, content) => {
+			if(err) {
+				T.logError(err)
+				return
+			}
+			T.logInfo("Parsing sourcecode...");
+			parseCode(content, manifest);
 		});
 	}
 
@@ -117,37 +72,22 @@ BehaviorLoader = new (function() {
 			console.log('Unable to load behavior interface: No flexbe_behaviors folder set!');
 			return;
 		}
-		chrome.fileSystem.restoreEntry(UI.Settings.getBehaviorsFolderID(), function(entry) {
-			Filesystem.checkFolderExists(entry, manifest.rosnode_name, function(exists) {
-				if (exists) {
-					entry.getDirectory(manifest.rosnode_name, { create: true },
-						function(dir) {
-							dir.getDirectory("src", { create: true },
-								function(src_dir) {
-									src_dir.getDirectory(manifest.rosnode_name, { create: true },
-										function (folder) {
-											Filesystem.getFileContent(folder, manifest.codefile_name, function(content) {
-												try {
-													var parsingResult = CodeParser.parseSMInterface(content);
-													callback(parsingResult);
-												} catch (err) {
-													T.logError("Failed to parse behavior interface of " + manifest.name + ": " + err);
-													return;
-												}
-											});
-										}, 
-										function(error) { T.logError("could not access folder " + manifest.rosnode_name + ", " + error); }
-									);
-								}, 
-								function(error) { T.logError("could not access folder src, " + error); }
-							);
-						}, 
-						function(error) { T.logError("could not access folder " + manifest.rosnode_name + ", " + error); }
-					);
-				} else {
-					T.logError("Behavior package not found in current workspace");
-				}
-			});
+
+		var behaviors_folder_path = UI.Settings.getBehaviorsFolderID();
+		folder = path.join(behaviors_folder_path, manifest.rosnode_name, 'src', manifest.rosnode_name);
+		Filesystem.getFileContent(path.join(folder, manifest.codefile_name), 'utf-8', (err, content) => {
+			if(err) {
+				T.logError(err)
+				return
+			}
+
+			try {
+				var parsingResult = CodeParser.parseSMInterface(content);
+				callback(parsingResult);
+			} catch (err) {
+				T.logError("Failed to parse behavior interface of " + manifest.name + ": " + err);
+				return;
+			}
 		});
 	}
 
@@ -156,42 +96,27 @@ BehaviorLoader = new (function() {
 			console.log('Unable to parse behavior statemachine: No flexbe_behaviors folder set!');
 			return;
 		}
-		chrome.fileSystem.restoreEntry(UI.Settings.getBehaviorsFolderID(), function(entry) {
-			Filesystem.checkFolderExists(entry, manifest.rosnode_name, function(exists) {
-				if (exists) {
-					entry.getDirectory(manifest.rosnode_name, { create: true },
-						function(dir) {
-							dir.getDirectory("src", { create: true },
-								function(src_dir) {
-									src_dir.getDirectory(manifest.rosnode_name, { create: true },
-										function (folder) {
-											Filesystem.getFileContent(folder, manifest.codefile_name, function(content) {
-												console.log("Preparing sourcecode of behavior " + manifest.name + "...");
-												try {
-													parsingResult = CodeParser.parseCode(content);
-												} catch (err) {
-													console.log("Code parsing failed: " + err);
-													return;
-												}
-												callback({
-													container_name: "",
-													container_sm_var_name: parsingResult.root_sm_name,
-													sm_defs: parsingResult.sm_defs,
-													sm_states: parsingResult.sm_states
-												});
-											});
-										}, 
-										function(error) { T.logError("could not access folder " + manifest.rosnode_name + ", " + error); }
-									);
-								}, 
-								function(error) { T.logError("could not access folder src, " + error); }
-							);
-						}, 
-						function(error) { T.logError("could not access folder " + manifest.rosnode_name + ", " + error); }
-					);
-				} else {
-					T.logError("Behavior package not found in current workspace");
-				}
+
+		var behaviors_folder_path = UI.Settings.getBehaviorsFolderID();
+		folder = path.join(behaviors_folder_path, manifest.rosnode_name, 'src', manifest.rosnode_name);
+		Filesystem.getFileContent(path.join(folder, manifest.codefile_name), 'utf-8', (err, content) => {
+			if(err) {
+				T.logError(err)
+				return
+			}
+
+			console.log("Preparing sourcecode of behavior " + manifest.name + "...");
+			try {
+				parsingResult = CodeParser.parseCode(content);
+			} catch (error) {
+				console.log("Code parsing failed: " + error);
+				return;
+			}
+			callback({
+				container_name: "",
+				container_sm_var_name: parsingResult.root_sm_name,
+				sm_defs: parsingResult.sm_defs,
+				sm_states: parsingResult.sm_states
 			});
 		});
 	}
@@ -210,76 +135,38 @@ BehaviorLoader = new (function() {
 			return;
 		}
 
-		chrome.fileSystem.restoreEntry(UI.Settings.getBEFolderID(), function(be_folder) {
-			be_folder.getDirectory("behaviors", { create: true },
-				function(dir) {
-					Filesystem.getFolderContent(dir, function(entries) {
-						todo_counter = entries.length;
-						entries.sort().forEach(function(entry, i) {
-							if(!entry.isDirectory) {
-								chrome.fileSystem.getDisplayPath(entry, function(path) {
-									var filename = Filesystem.getFileName(path, true);
-									if (!filename.endsWith(".xml") || filename[0] == '#') {
-										updateCounter();
-										return;
-									}
-									entry.file(function(file) {
-										var reader = new FileReader();
-										reader.onload = function(e) {
-											var content = e.target.result;
-											var manifest = ManifestParser.parseManifest(content);
-											manifest.filename = filename;
-											be_list.push(manifest);
-											updateCounter();
-										};
-										reader.readAsText(file);
-									});
-								});
-							} else {
-								updateCounter();
-							}
-						});
+		var be_folder_path = path.join(UI.Settings.getBEFolderID(), 'behaviors');
+
+		Filesystem.getFolderContent(be_folder_path, (err, entries) => {
+			if(err) {
+				T.logError(err)
+				T.logError("Can't open folder '" + be_folder_path + "'")
+				return
+			}
+
+			todo_counter = entries.length;
+			entries.sort().forEach(function(entry, i) {
+				if(!Filesystem.isDirectory(entry)) {
+					var filename = entry;
+					if (!filename.endsWith(".xml") || filename[0] == '#') {
+						updateCounter();
+						return;
+					}
+
+					Filesystem.getFileContent(path.join(be_folder_path, filename), 'utf-8', (err, content) => {
+						if(err) {
+							T.logError(err)
+							updateCounter()
+							return
+						}
+
+						var manifest = ManifestParser.parseManifest(content);
+						manifest.filename = filename;
+						be_list.push(manifest);
+						updateCounter();
 					});
-				},
-				function(error) { T.logError("could not access folder behaviors, " + error); }
-			);
-		});
-	}
-
-	this.getSourceCodeFileEntry = function(behavior_names, callback) {
-		// behavior_names from Behavior.createNames()
-
-		chrome.fileSystem.restoreEntry(UI.Settings.getBehaviorsFolderID(), function(entry) {
-			Filesystem.checkFolderExists(entry, behavior_names.rosnode_name, function(exists) {
-				if (exists) {
-					entry.getDirectory(behavior_names.rosnode_name, { create: true },
-						function(dir) {
-							dir.getDirectory("src", { create: true },
-								function(src_dir) {
-									src_dir.getDirectory(behavior_names.rosnode_name, { create: true },
-										function (folder) {
-											Filesystem.getFolderContent(folder, function(content) {
-												for (var i = 0; i < content.length; i++) {
-													if (content[i].name == behavior_names.file_name) {
-														console.log("Found it!");
-														callback(content[i]);
-														return;
-													}
-												};
-												console.log("Didn't find file " + behavior_names.file_name);
-												console.log(folder);
-											});
-										}, 
-										function(error) { T.logError("could not access folder " + manifest.rosnode_name + ", " + error); }
-									);
-								}, 
-								function(error) { T.logError("could not access folder src, " + error); }
-							);
-						}, 
-						function(error) { T.logError("could not access folder " + manifest.rosnode_name + ", " + error); }
-					);
 				} else {
-					T.logError("Behavior package not found in current workspace");
+					updateCounter();
 				}
 			});
 		});
